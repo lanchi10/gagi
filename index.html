@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>יישום תקשורת למטופל - עיצוב משופר</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 10px;
+            background-color: #f0f0f0;
+        }
+        h1, h2 {
+            color: #333;
+            text-align: center;
+            margin: 10px 0;
+        }
+        .category {
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .phrase-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+            background-color: #fff;
+            border-radius: 5px;
+            padding: 5px;
+        }
+        .phrase-button {
+            flex-grow: 1;
+            padding: 10px;
+            font-size: 16px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 5px;
+            text-align: right;
+        }
+        .phrase-button:hover {
+            opacity: 0.9;
+        }
+        .phrase-button.active {
+            background-color: #e74c3c !important;
+            font-weight: bold;
+            transform: scale(1.02);
+        }
+        .phrase-inputs {
+            display: flex;
+            align-items: center;
+            flex-grow: 1;
+        }
+        input[type="text"] {
+            padding: 5px;
+            font-size: 14px;
+            border: 1px solid #3498db;
+            border-radius: 3px;
+            margin-right: 5px;
+        }
+        input[type="text"].hebrew {
+            width: 40%;
+        }
+        input[type="text"].english {
+            width: 40%;
+        }
+        input[type="color"] {
+            width: 30px;
+            height: 30px;
+            margin-right: 5px;
+        }
+        .control-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-right: 5px;
+        }
+        .control-button {
+            padding: 5px;
+            font-size: 14px;
+            background-color: #95a5a6;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            margin: 0 2px;
+        }
+        .remove-button {
+            background-color: #e74c3c;
+        }
+        #addPhraseForm {
+            margin-top: 10px;
+            background-color: #ecf0f1;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        #addPhraseForm input[type="text"] {
+            width: calc(50% - 10px);
+            margin: 5px 0;
+        }
+        #addPhraseForm button {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+        #voiceSelection, #speedControl {
+            margin-bottom: 10px;
+        }
+        select, #speedSlider {
+            width: 100%;
+            padding: 5px;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>יישום תקשורת למטופל</h1>
+    
+    <div id="voiceSelection">
+        <h2>בחירת קול</h2>
+        <select id="voiceSelect"></select>
+    </div>
+
+    <div id="speedControl">
+        <h2>קצב דיבור</h2>
+        <input type="range" id="speedSlider" min="0.5" max="1.5" step="0.1" value="0.8">
+        <span id="speedValue">0.8</span>
+    </div>
+
+    <div class="category">
+        <h2>בקשות ושאלות</h2>
+        <div id="phrasesContainer"></div>
+    </div>
+
+    <div id="addPhraseForm">
+        <h2>הוסף משפט חדש</h2>
+        <input type="text" id="newHebrew" placeholder="טקסט בעברית">
+        <input type="text" id="newTrans" placeholder="תעתיק באנגלית">
+        <button onclick="addNewPhrase()">הוסף משפט</button>
+    </div>
+
+    <script>
+        let phrases = [
+            {hebrew: 'קרא לאחות', trans: 'kra la\'akhot', color: '#3498db'},
+            {hebrew: 'אני מרגיש כאב', trans: 'ani margish ke\'ev', color: '#3498db'},
+            {hebrew: 'אני צמא', trans: 'ani tsame', color: '#3498db'},
+            {hebrew: 'אני צריך עזרה', trans: 'ani tsarikh ezra', color: '#3498db'},
+            {hebrew: 'מתי הארוחה הבאה', trans: 'matai ha\'arukha haba\'a', color: '#3498db'},
+            {hebrew: 'אפשר להגביר את הטלוויזיה', trans: 'efshar lehagbir et hatelevizya', color: '#3498db'},
+            {hebrew: 'אני רוצה לשבת', trans: 'ani rotse lashev', color: '#3498db'},
+            {hebrew: 'מתי יבוא הרופא', trans: 'matai yavo harofe', color: '#3498db'},
+            {hebrew: 'תודה', trans: 'toda', color: '#3498db'},
+            {hebrew: 'תודה רבה', trans: 'toda raba', color: '#3498db'},
+            {hebrew: 'תודה על הכל', trans: 'toda al hakol', color: '#3498db'},
+            {hebrew: 'סבבה', trans: 'sababa', color: '#3498db'}
+        ];
+
+        let voices = [];
+        let activeButton = null;
+
+        function populateVoiceList() {
+            voices = speechSynthesis.getVoices();
+            const voiceSelect = document.getElementById('voiceSelect');
+            voiceSelect.innerHTML = '';
+            voices.forEach((voice, index) => {
+                const option = document.createElement('option');
+                option.textContent = `${voice.name} (${voice.lang})`;
+                option.setAttribute('data-index', index);
+                voiceSelect.appendChild(option);
+            });
+        }
+
+        populateVoiceList();
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = populateVoiceList;
+        }
+
+        const speedSlider = document.getElementById('speedSlider');
+        const speedValue = document.getElementById('speedValue');
+        speedSlider.oninput = function() {
+            speedValue.textContent = this.value;
+        }
+
+        function createPhraseElements() {
+            const container = document.getElementById('phrasesContainer');
+            container.innerHTML = ''; // Clear existing phrases
+            phrases.forEach((phrase, index) => {
+                const phraseContainer = document.createElement('div');
+                phraseContainer.className = 'phrase-container';
+
+                const button = document.createElement('button');
+                button.className = 'phrase-button';
+                button.textContent = phrase.hebrew;
+                button.style.backgroundColor = phrase.color;
+                button.onclick = function() { speakText(phrase.trans, phrase.hebrew, this); };
+
+                const phraseInputs = document.createElement('div');
+                phraseInputs.className = 'phrase-inputs';
+
+                const hebrewInput = document.createElement('input');
+                hebrewInput.type = 'text';
+                hebrewInput.value = phrase.hebrew;
+                hebrewInput.className = 'hebrew';
+                hebrewInput.oninput = function() { 
+                    phrases[index].hebrew = this.value;
+                    button.textContent = this.value;
+                };
+
+                const transInput = document.createElement('input');
+                transInput.type = 'text';
+                transInput.value = phrase.trans;
+                transInput.className = 'english';
+                transInput.oninput = function() { phrases[index].trans = this.value; };
+
+                const colorInput = document.createElement('input');
+                colorInput.type = 'color';
+                colorInput.value = phrase.color;
+                colorInput.oninput = function() {
+                    phrases[index].color = this.value;
+                    button.style.backgroundColor = this.value;
+                };
+
+                const controlButtons = document.createElement('div');
+                controlButtons.className = 'control-buttons';
+
+                const moveUpButton = document.createElement('button');
+                moveUpButton.textContent = '▲';
+                moveUpButton.className = 'control-button';
+                moveUpButton.onclick = function() { movePhrase(index, -1); };
+
+                const moveDownButton = document.createElement('button');
+                moveDownButton.textContent = '▼';
+                moveDownButton.className = 'control-button';
+                moveDownButton.onclick = function() { movePhrase(index, 1); };
+
+                const removeButton = document.createElement('button');
+                removeButton.textContent = 'הסר';
+                removeButton.className = 'control-button remove-button';
+                removeButton.onclick = function() { removePhrase(index); };
+
+                controlButtons.appendChild(moveUpButton);
+                controlButtons.appendChild(removeButton);
+                controlButtons.appendChild(moveDownButton);
+
+                phraseInputs.appendChild(hebrewInput);
+                phraseInputs.appendChild(transInput);
+                phraseInputs.appendChild(colorInput);
+
+                phraseContainer.appendChild(button);
+                phraseContainer.appendChild(phraseInputs);
+                phraseContainer.appendChild(controlButtons);
+                container.appendChild(phraseContainer);
+            });
+        }
+
+        function movePhrase(index, direction) {
+            if ((index === 0 && direction === -1) || (index === phrases.length - 1 && direction === 1)) {
+                return; // Can't move further in this direction
+            }
+            const newIndex = index + direction;
+            [phrases[index], phrases[newIndex]] = [phrases[newIndex], phrases[index]];
+            createPhraseElements();
+        }
+
+        function removePhrase(index) {
+            phrases.splice(index, 1);
+            createPhraseElements();
+        }
+
+        function speakText(transText, originalText, button) {
+            if (activeButton) {
+                activeButton.classList.remove('active');
+            }
+            button.classList.add('active');
+            activeButton = button;
+
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(transText);
+                const voiceSelect = document.getElementById('voiceSelect');
+                const selectedVoice = voices[voiceSelect.selectedIndex];
+                utterance.voice = selectedVoice;
+                utterance.lang = 'en-US';
+                utterance.rate = parseFloat(speedSlider.value);
+                speechSynthesis.speak(utterance);
+                console.log(`Speaking: ${transText} (${originalText}) at rate ${utterance.rate}`);
+            } else {
+                alert("הדפדפן שלך לא תומך בהמרת טקסט לדיבור.");
+            }
+        }
+
+        function addNewPhrase() {
+            const newHebrew = document.getElementById('newHebrew').value;
+            const newTrans = document.getElementById('newTrans').value;
+            if (newHebrew && newTrans) {
+                phrases.push({hebrew: newHebrew, trans: newTrans, color: '#3498db'});
+                createPhraseElements();
+                document.getElementById('newHebrew').value = '';
+                document.getElementById('newTrans').value = '';
+            } else {
+                alert('נא למלא את שני השדות');
+            }
+        }
+
+        createPhraseElements();
+    </script>
+</body>
+</html>
+
+Version 12 of 12
+
+
+
